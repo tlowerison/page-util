@@ -36,8 +36,6 @@ cfg_if! { if #[cfg(any(
     pub(crate) use async_graphql_6 as async_graphql;
 } }
 
-
-
 #[derive(
     AsVariant, AsVariantMut, Clone, Copy, Debug, Deserialize, Eq, Hash, IsVariant, Ord, PartialEq, PartialOrd, Serialize,
 )]
@@ -62,4 +60,3 @@ impl Page {
         }
     }
 }
-

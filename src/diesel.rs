@@ -1080,14 +1080,14 @@ pub(super) mod db_page {
     use ::std::cmp::Ordering;
     use ::std::collections::{BTreeMap, HashMap};
     use ::uuid::Uuid;
-    
+
     #[cfg(feature = "async-graphql-4")]
     use async_graphql_4 as async_graphql;
     #[cfg(feature = "async-graphql-5")]
     use async_graphql_5 as async_graphql;
     #[cfg(feature = "async-graphql-6")]
     use async_graphql_6 as async_graphql;
-    
+
     #[derive(AsVariant, AsVariantMut, Derivative, IsVariant, Unwrap)]
     #[derivative(
         Clone(bound = ""),
@@ -1100,13 +1100,13 @@ pub(super) mod db_page {
         Cursor(DbPageCursor<QS>),
         Offset(DbPageOffset),
     }
-    
+
     impl<QS: ?Sized> Ord for DbPage<QS> {
         fn cmp(&self, other: &Self) -> Ordering {
             self.partial_cmp(other).unwrap()
         }
     }
-    
+
     impl<QS: ?Sized> PartialOrd for DbPage<QS> {
         fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
             match self {
@@ -1121,14 +1121,14 @@ pub(super) mod db_page {
             }
         }
     }
-    
+
     pub trait DbPageExt {
         fn is_empty(&self) -> bool;
         fn merge(items: impl IntoIterator<Item = impl Borrow<Self>>) -> Vec<Self>
         where
             Self: Sized;
     }
-    
+
     impl<QS> DbPageExt for DbPage<QS> {
         fn is_empty(&self) -> bool {
             match self {
@@ -1147,20 +1147,20 @@ pub(super) mod db_page {
                 .unzip();
             let page_cursors = page_cursors.into_iter().flatten().collect_vec();
             let page_offsets = page_offsets.into_iter().flatten().collect_vec();
-    
+
             let mut pages = Vec::<Self>::new();
             pages.extend(&mut DbPageCursor::merge(page_cursors).into_iter().map(DbPage::Cursor));
             pages.extend(&mut DbPageOffset::merge(page_offsets).into_iter().map(DbPage::Offset));
-    
+
             pages
         }
     }
-    
+
     pub(crate) struct DbPageSplit {
         pub(crate) cursor_indices: Vec<usize>,
         pub(crate) offset_indices: Vec<usize>,
     }
-    
+
     impl<QS> DbPage<QS> {
         pub(crate) fn split(pages: &[Self]) -> DbPageSplit {
             let (page_cursors, page_offsets): (Vec<_>, Vec<_>) = pages
@@ -1171,21 +1171,21 @@ pub(super) mod db_page {
                     DbPage::Offset(_) => (None, Some(i)),
                 })
                 .unzip();
-    
+
             DbPageSplit {
                 cursor_indices: page_cursors.into_iter().flatten().collect(),
                 offset_indices: page_offsets.into_iter().flatten().collect(),
             }
         }
     }
-    
+
     pub fn split_multipaginated_results<T: ?Sized, R: Clone>(
         results: Vec<(R, Option<i64>, Option<String>)>,
         pages: Vec<DbPage<T>>,
     ) -> HashMap<DbPage<T>, Vec<R>> {
         use std::ops::Bound::*;
         use std::str::FromStr;
-    
+
         let mut pages_by_cursor_id = HashMap::<Uuid, &DbPage<T>>::default();
         let mut pages_by_page_offset_range = BTreeMap::<Range, &DbPage<T>>::default();
         for page in &pages {
@@ -1206,7 +1206,7 @@ pub(super) mod db_page {
         } else {
             (0, 0) // never used
         };
-    
+
         let mut results_by_page = HashMap::<DbPage<T>, Vec<R>>::default();
         for (result, row_number, page_id) in results {
             if let Some(page_id) = page_id {
@@ -1231,12 +1231,12 @@ pub(super) mod db_page {
                 ));
                 if let Some((_, first_match)) = matches.next() {
                     let new_pages_and_results = matches.map(|(_, page)| (*page, result.clone())).collect::<Vec<_>>();
-    
+
                     if !results_by_page.contains_key(first_match) {
                         results_by_page.insert((*first_match).clone(), vec![]);
                     }
                     results_by_page.get_mut(first_match).unwrap().push(result);
-    
+
                     for (page, result) in new_pages_and_results {
                         if !results_by_page.contains_key(page) {
                             results_by_page.insert((*page).clone(), vec![]);
@@ -1246,10 +1246,10 @@ pub(super) mod db_page {
                 }
             }
         }
-    
+
         results_by_page
     }
-    
+
     impl Page {
         pub fn on_column<QS, C>(self, column: C) -> DbPage<QS>
         where
@@ -1257,12 +1257,12 @@ pub(super) mod db_page {
             C: AppearsOnTable<QS> + Clone + Column + QF + Send + Sync,
             <C as Expression>::SqlType: SingleValue,
             NaiveDateTime: AsExpression<C::SqlType>,
-    
+
             Gt<C, NaiveDateTime>: Expression,
             Lt<C, NaiveDateTime>: Expression,
             GtEq<C, NaiveDateTime>: Expression,
             LtEq<C, NaiveDateTime>: Expression,
-    
+
             dsl::Nullable<Gt<C, NaiveDateTime>>: AppearsOnTable<QS>
                 + DynClone
                 + Expression<SqlType = Nullable<Bool>>
@@ -1301,7 +1301,7 @@ pub(super) mod db_page {
                 Self::Offset(offset) => DbPage::Offset(offset.into()),
             }
         }
-    
+
         pub fn on_columns<QS, C1, C2, N1, N2>(self, column1: C1, column2: C2) -> DbPage<QS>
         where
             QS: QuerySource,
@@ -1311,22 +1311,22 @@ pub(super) mod db_page {
             <C2 as Expression>::SqlType: SingleValue + SqlType<IsNull = N2>,
             NaiveDateTime: AsExpression<C1::SqlType> + AsExpression<C2::SqlType>,
             <NaiveDateTime as AsExpression<C2::SqlType>>::Expression: QF,
-    
+
             N1: OneIsNullable<N1>,
             <N1 as OneIsNullable<N1>>::Out: MaybeNullableType<Bool>,
             N2: OneIsNullable<N2>,
             <N2 as OneIsNullable<N2>>::Out: MaybeNullableType<Bool>,
-    
+
             dsl::Nullable<Gt<C1, NaiveDateTime>>: Expression,
             dsl::Nullable<Lt<C1, NaiveDateTime>>: Expression,
             dsl::Nullable<GtEq<C1, NaiveDateTime>>: Expression,
             dsl::Nullable<LtEq<C1, NaiveDateTime>>: Expression,
-    
+
             IsNotNull<C1>: Expression + BoolExpressionMethods,
             <IsNotNull<C1> as Expression>::SqlType: SqlType,
             <<<IsNotNull<C1> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<NotNull>>::Out: MaybeNullableType<Bool>,
             <<<IsNotNull<C1> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<IsNullable>>::Out: MaybeNullableType<Bool>,
-    
+
             dsl::Nullable<Gt<C1, NaiveDateTime>>: AsExpression<Nullable<Bool>>,
             <dsl::Nullable<Gt<C1, NaiveDateTime>> as Expression>::SqlType: SqlType,
             <<<dsl::Nullable<Gt<C1, NaiveDateTime>> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<NotNull>>::Out: MaybeNullableType<Bool>,
@@ -1359,7 +1359,7 @@ pub(super) mod db_page {
                 + Sync
                 + ValidGrouping<(), IsAggregate = No>
                 + 'static,
-    
+
             dsl::Nullable<GtEq<C1, NaiveDateTime>>: AsExpression<Nullable<Bool>>,
             <dsl::Nullable<GtEq<C1, NaiveDateTime>> as Expression>::SqlType: SqlType,
             <<<dsl::Nullable<GtEq<C1, NaiveDateTime>> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<NotNull>>::Out: MaybeNullableType<Bool>,
@@ -1392,7 +1392,7 @@ pub(super) mod db_page {
                 + Sync
                 + ValidGrouping<(), IsAggregate = No>
                 + 'static,
-    
+
             dsl::Nullable<Lt<C1, NaiveDateTime>>: AsExpression<Nullable<Bool>>,
             <dsl::Nullable<Lt<C1, NaiveDateTime>> as Expression>::SqlType: SqlType,
             <<<dsl::Nullable<Lt<C1, NaiveDateTime>> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<NotNull>>::Out: MaybeNullableType<Bool>,
@@ -1425,7 +1425,7 @@ pub(super) mod db_page {
                 + Sync
                 + ValidGrouping<(), IsAggregate = No>
                 + 'static,
-    
+
             dsl::Nullable<LtEq<C1, NaiveDateTime>>: AsExpression<Nullable<Bool>>,
             <dsl::Nullable<LtEq<C1, NaiveDateTime>> as Expression>::SqlType: SqlType,
             <<<dsl::Nullable<LtEq<C1, NaiveDateTime>> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<NotNull>>::Out: MaybeNullableType<Bool>,
@@ -1464,15 +1464,15 @@ pub(super) mod db_page {
                 Self::Offset(offset) => DbPage::Offset(offset.into()),
             }
         }
-    
+
         pub fn map_on_column<QS, C>(column: C) -> impl (Fn(Self) -> DbPage<QS>) + 'static
         where
             QS: QuerySource,
             C: AppearsOnTable<QS> + Clone + Column + QF + Send + Sync,
             <C as Expression>::SqlType: SingleValue,
-    
+
             NaiveDateTime: AsExpression<C::SqlType>,
-    
+
             Gt<C, NaiveDateTime>: Expression,
             Lt<C, NaiveDateTime>: Expression,
             GtEq<C, NaiveDateTime>: Expression,
@@ -1513,7 +1513,7 @@ pub(super) mod db_page {
             move |page| page.on_column(column.clone())
         }
     }
-    
+
     // necessary to use instead of something like Borrow
     // because coercion from double reference to single reference
     // does not occur automatically when passing in a value that needs
@@ -1522,17 +1522,17 @@ pub(super) mod db_page {
     pub trait DbPageRef<'a, QS: ?Sized> {
         fn page_ref(&'a self) -> &'a DbPage<QS>;
     }
-    
+
     pub trait AsDbPage<QS: ?Sized> {
         fn as_page(&self) -> Option<&DbPage<QS>>;
     }
-    
+
     impl<QS> AsRef<DbPage<QS>> for DbPage<QS> {
         fn as_ref(&self) -> &DbPage<QS> {
             self
         }
     }
-    
+
     impl<'a, T, QS> DbPageRef<'a, QS> for T
     where
         T: AsRef<DbPage<QS>>,
@@ -1541,41 +1541,41 @@ pub(super) mod db_page {
             self.as_ref()
         }
     }
-    
+
     impl<QS, P: Borrow<DbPage<QS>>> AsDbPage<QS> for P {
         fn as_page(&self) -> Option<&DbPage<QS>> {
             Some(self.borrow())
         }
     }
-    
+
     impl<QS> AsDbPage<QS> for Option<DbPage<QS>> {
         fn as_page(&self) -> Option<&DbPage<QS>> {
             self.as_ref()
         }
     }
-    
+
     impl<QS> AsDbPage<QS> for &Option<DbPage<QS>> {
         fn as_page(&self) -> Option<&DbPage<QS>> {
             self.as_ref()
         }
     }
-    
+
     impl<QS> AsDbPage<QS> for Option<&DbPage<QS>> {
         fn as_page(&self) -> Option<&DbPage<QS>> {
             *self
         }
     }
-    
+
     impl<QS> AsDbPage<QS> for &Option<&DbPage<QS>> {
         fn as_page(&self) -> Option<&DbPage<QS>> {
             **self
         }
     }
-    
+
     pub trait OptDbPageRef<'a, QS: ?Sized> {
         fn opt_page_ref(&'a self) -> Option<&'a DbPage<QS>>;
     }
-    
+
     impl<'a, T, QS: ?Sized> OptDbPageRef<'a, QS> for Option<T>
     where
         T: OptDbPageRef<'a, QS>,
@@ -1587,7 +1587,7 @@ pub(super) mod db_page {
             }
         }
     }
-    
+
     impl<'a, 'b: 'a, T, QS: ?Sized> OptDbPageRef<'a, QS> for &'b T
     where
         T: OptDbPageRef<'a, QS>,
@@ -1596,19 +1596,19 @@ pub(super) mod db_page {
             OptDbPageRef::opt_page_ref(*self)
         }
     }
-    
+
     impl<'a, QS: ?Sized> OptDbPageRef<'a, QS> for DbPage<QS> {
         fn opt_page_ref(&'a self) -> Option<&'a DbPage<QS>> {
             Some(self)
         }
     }
-    
+
     pub trait OptDbPageRefs<'a, QS: ?Sized> {
         type _IntoIter: IntoIterator<Item = Self::_Item> + 'a;
         type _Item: for<'b> DbPageRef<'b, QS>;
         fn opt_page_refs(&'a self) -> Option<Self::_IntoIter>;
     }
-    
+
     #[derive(Clone, Debug)]
     pub enum OptDbPageRefsEither<L, R> {
         Left(L),
@@ -1619,7 +1619,7 @@ pub(super) mod db_page {
         Left(L),
         Right(R),
     }
-    
+
     impl<L, R> IntoIterator for OptDbPageRefsEither<L, R>
     where
         L: IntoIterator,
@@ -1627,7 +1627,7 @@ pub(super) mod db_page {
     {
         type IntoIter = OptDbPageRefsEitherIter<L::IntoIter, R::IntoIter>;
         type Item = OptDbPageRefsEither<L::Item, R::Item>;
-    
+
         fn into_iter(self) -> Self::IntoIter {
             match self {
                 Self::Left(left) => OptDbPageRefsEitherIter::Left(left.into_iter()),
@@ -1635,14 +1635,14 @@ pub(super) mod db_page {
             }
         }
     }
-    
+
     impl<L, R> Iterator for OptDbPageRefsEitherIter<L, R>
     where
         L: Iterator,
         R: Iterator,
     {
         type Item = OptDbPageRefsEither<L::Item, R::Item>;
-    
+
         fn next(&mut self) -> Option<Self::Item> {
             match self {
                 Self::Left(left) => left.next().map(OptDbPageRefsEither::Left),
@@ -1650,7 +1650,7 @@ pub(super) mod db_page {
             }
         }
     }
-    
+
     impl<'a, L, R, QS: ?Sized> DbPageRef<'a, QS> for OptDbPageRefsEither<L, R>
     where
         L: DbPageRef<'a, QS>,
@@ -1663,7 +1663,7 @@ pub(super) mod db_page {
             }
         }
     }
-    
+
     impl<'a, 'b: 'a, T, QS: ?Sized> OptDbPageRefs<'a, QS> for &'b T
     where
         T: OptDbPageRefs<'a, QS>,
@@ -1674,7 +1674,7 @@ pub(super) mod db_page {
             OptDbPageRefs::opt_page_refs(*self)
         }
     }
-    
+
     impl<'a, T, QS: ?Sized> OptDbPageRefs<'a, QS> for Option<T>
     where
         T: OptDbPageRefs<'a, QS>,
@@ -1688,7 +1688,7 @@ pub(super) mod db_page {
             }
         }
     }
-    
+
     impl<'a, 'b: 'a, T: ToOwned, QS: ?Sized> OptDbPageRefs<'a, QS> for Cow<'b, T>
     where
         T: OptDbPageRefs<'a, QS> + IntoIterator,
@@ -1705,7 +1705,7 @@ pub(super) mod db_page {
             }
         }
     }
-    
+
     impl<'a, QS: 'a> OptDbPageRefs<'a, QS> for Vec<DbPage<QS>> {
         type _IntoIter = &'a [DbPage<QS>];
         type _Item = &'a DbPage<QS>;
@@ -1713,7 +1713,7 @@ pub(super) mod db_page {
             Some(self)
         }
     }
-    
+
     impl<'a, 'b: 'a, QS: 'a> OptDbPageRefs<'a, QS> for &'b [DbPage<QS>] {
         type _IntoIter = &'a [DbPage<QS>];
         type _Item = &'a DbPage<QS>;
@@ -1721,7 +1721,7 @@ pub(super) mod db_page {
             Some(self)
         }
     }
-    
+
     impl<'a, const N: usize, QS: 'a> OptDbPageRefs<'a, QS> for [DbPage<QS>; N] {
         type _IntoIter = &'a [DbPage<QS>];
         type _Item = &'a DbPage<QS>;
@@ -1729,7 +1729,7 @@ pub(super) mod db_page {
             Some(self)
         }
     }
-    
+
     impl<'a, 'b: 'a, QS: 'a> OptDbPageRefs<'a, QS> for Cow<'b, [DbPage<QS>]> {
         type _IntoIter = &'a [DbPage<QS>];
         type _Item = &'a DbPage<QS>;
@@ -1758,7 +1758,7 @@ pub(super) mod db_page_cursor {
     use ::std::borrow::Borrow;
     use ::std::cmp::Ordering;
     use ::uuid::Uuid;
-    
+
     #[derive(Derivative)]
     #[derivative(Debug(bound = ""), Eq(bound = ""), Hash(bound = ""), PartialEq(bound = ""))]
     pub struct DbPageCursor<QS: ?Sized> {
@@ -1771,7 +1771,7 @@ pub(super) mod db_page_cursor {
         pub(crate) direction: CursorDirection,
         pub(crate) is_comparator_inclusive: bool,
     }
-    
+
     #[derive(Derivative)]
     #[derivative(Debug(bound = ""), Eq(bound = ""), Hash(bound = ""), PartialEq(bound = ""))]
     pub struct DbPageCursorColumn<QS: ?Sized> {
@@ -1785,11 +1785,11 @@ pub(super) mod db_page_cursor {
         #[derivative(PartialEq = "ignore")]
         pub(crate) order_by_expression: Box<dyn ColumnOrderByExpression<QS>>,
     }
-    
+
     pub trait DbPageFrom<T> {
         fn page_from(value: T) -> Self;
     }
-    
+
     impl<QS: ?Sized> Clone for DbPageCursor<QS> {
         fn clone(&self) -> Self {
             Self {
@@ -1806,7 +1806,7 @@ pub(super) mod db_page_cursor {
             }
         }
     }
-    
+
     pub trait ColumnCursorComparisonExpression<QS: ?Sized>:
         AppearsOnTable<QS>
         + DynClone
@@ -1818,12 +1818,18 @@ pub(super) mod db_page_cursor {
         + 'static
     {
     }
-    
+
     pub trait ColumnOrderByExpression<QS: ?Sized>:
-        AppearsOnTable<QS> + DynClone + Expression<SqlType = (NotSelectable, NotSelectable)> + QF + Send + Sync + 'static
+        AppearsOnTable<QS>
+        + DynClone
+        + Expression<SqlType = (NotSelectable, NotSelectable)>
+        + QF
+        + Send
+        + Sync
+        + 'static
     {
     }
-    
+
     impl<
             QS: QuerySource + ?Sized,
             CE: AppearsOnTable<QS>
@@ -1837,7 +1843,7 @@ pub(super) mod db_page_cursor {
         > ColumnCursorComparisonExpression<QS> for CE
     {
     }
-    
+
     impl<
             QS: QuerySource + ?Sized,
             CE: AppearsOnTable<QS>
@@ -1850,7 +1856,7 @@ pub(super) mod db_page_cursor {
         > ColumnOrderByExpression<QS> for CE
     {
     }
-    
+
     impl PageCursor {
         pub fn on_column<QS, C>(self, column: C) -> DbPageCursor<QS>
         where
@@ -1858,12 +1864,12 @@ pub(super) mod db_page_cursor {
             C: AppearsOnTable<QS> + Clone + Column + QF + Send + Sync,
             <C as Expression>::SqlType: SingleValue,
             NaiveDateTime: AsExpression<C::SqlType>,
-    
+
             Gt<C, NaiveDateTime>: Expression,
             Lt<C, NaiveDateTime>: Expression,
             GtEq<C, NaiveDateTime>: Expression,
             LtEq<C, NaiveDateTime>: Expression,
-    
+
             dsl::Nullable<Gt<C, NaiveDateTime>>: AppearsOnTable<QS>
                 + DynClone
                 + Expression<SqlType = Nullable<Bool>>
@@ -1898,7 +1904,7 @@ pub(super) mod db_page_cursor {
                 + 'static,
         {
             let is_comparator_inclusive = self.is_comparator_inclusive.unwrap_or_default();
-    
+
             DbPageCursor {
                 count: self.count as i64,
                 id: Uuid::new_v4(),
@@ -1920,7 +1926,7 @@ pub(super) mod db_page_cursor {
                 },
             }
         }
-    
+
         pub fn on_columns<QS, C1, C2, N1, N2>(self, column1: C1, column2: C2) -> DbPageCursor<QS>
         where
             QS: QuerySource,
@@ -1930,22 +1936,22 @@ pub(super) mod db_page_cursor {
             <C2 as Expression>::SqlType: SingleValue + SqlType<IsNull = N2>,
             NaiveDateTime: AsExpression<C1::SqlType> + AsExpression<C2::SqlType>,
             <NaiveDateTime as AsExpression<C2::SqlType>>::Expression: QF,
-    
+
             N1: OneIsNullable<N1>,
             <N1 as OneIsNullable<N1>>::Out: MaybeNullableType<Bool>,
             N2: OneIsNullable<N2>,
             <N2 as OneIsNullable<N2>>::Out: MaybeNullableType<Bool>,
-    
+
             dsl::Nullable<Gt<C1, NaiveDateTime>>: Expression,
             dsl::Nullable<Lt<C1, NaiveDateTime>>: Expression,
             dsl::Nullable<GtEq<C1, NaiveDateTime>>: Expression,
             dsl::Nullable<LtEq<C1, NaiveDateTime>>: Expression,
-    
+
             IsNotNull<C1>: Expression + BoolExpressionMethods,
             <IsNotNull<C1> as Expression>::SqlType: SqlType,
             <<<IsNotNull<C1> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<NotNull>>::Out: MaybeNullableType<Bool>,
             <<<IsNotNull<C1> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<IsNullable>>::Out: MaybeNullableType<Bool>,
-    
+
             dsl::Nullable<Gt<C1, NaiveDateTime>>: AsExpression<Nullable<Bool>>,
             <dsl::Nullable<Gt<C1, NaiveDateTime>> as Expression>::SqlType: SqlType,
             <<<dsl::Nullable<Gt<C1, NaiveDateTime>> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<NotNull>>::Out: MaybeNullableType<Bool>,
@@ -1978,7 +1984,7 @@ pub(super) mod db_page_cursor {
                 + Sync
                 + ValidGrouping<(), IsAggregate = No>
                 + 'static,
-    
+
             dsl::Nullable<GtEq<C1, NaiveDateTime>>: AsExpression<Nullable<Bool>>,
             <dsl::Nullable<GtEq<C1, NaiveDateTime>> as Expression>::SqlType: SqlType,
             <<<dsl::Nullable<GtEq<C1, NaiveDateTime>> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<NotNull>>::Out: MaybeNullableType<Bool>,
@@ -2011,7 +2017,7 @@ pub(super) mod db_page_cursor {
                 + Sync
                 + ValidGrouping<(), IsAggregate = No>
                 + 'static,
-    
+
             dsl::Nullable<Lt<C1, NaiveDateTime>>: AsExpression<Nullable<Bool>>,
             <dsl::Nullable<Lt<C1, NaiveDateTime>> as Expression>::SqlType: SqlType,
             <<<dsl::Nullable<Lt<C1, NaiveDateTime>> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<NotNull>>::Out: MaybeNullableType<Bool>,
@@ -2044,7 +2050,7 @@ pub(super) mod db_page_cursor {
                 + Sync
                 + ValidGrouping<(), IsAggregate = No>
                 + 'static,
-    
+
             dsl::Nullable<LtEq<C1, NaiveDateTime>>: AsExpression<Nullable<Bool>>,
             <dsl::Nullable<LtEq<C1, NaiveDateTime>> as Expression>::SqlType: SqlType,
             <<<dsl::Nullable<LtEq<C1, NaiveDateTime>> as Expression>::SqlType as SqlType>::IsNull as OneIsNullable<NotNull>>::Out: MaybeNullableType<Bool>,
@@ -2129,19 +2135,19 @@ pub(super) mod db_page_cursor {
             }
         }
     }
-    
+
     impl<QS, C> From<(PageCursor, C)> for DbPageCursor<QS>
     where
         QS: QuerySource,
         C: AppearsOnTable<QS> + Clone + Column + QF + Send + Sync + ValidGrouping<(), IsAggregate = No> + 'static,
         <C as Expression>::SqlType: SingleValue,
         NaiveDateTime: AsExpression<C::SqlType>,
-    
+
         Gt<C, NaiveDateTime>: Expression,
         Lt<C, NaiveDateTime>: Expression,
         GtEq<C, NaiveDateTime>: Expression,
         LtEq<C, NaiveDateTime>: Expression,
-    
+
         dsl::Nullable<Gt<C, NaiveDateTime>>: AppearsOnTable<QS>
             + DynClone
             + Expression<SqlType = Nullable<Bool>>
@@ -2179,7 +2185,7 @@ pub(super) mod db_page_cursor {
             PageCursor::on_column(value, column)
         }
     }
-    
+
     impl<QS: ?Sized> PartialOrd for DbPageCursor<QS> {
         fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
             if self.cursor != rhs.cursor {
@@ -2189,13 +2195,13 @@ pub(super) mod db_page_cursor {
             }
         }
     }
-    
+
     impl<QS: ?Sized> Ord for DbPageCursor<QS> {
         fn cmp(&self, rhs: &Self) -> Ordering {
             self.partial_cmp(rhs).unwrap()
         }
     }
-    
+
     impl<QS: ?Sized> DbPageExt for DbPageCursor<QS> {
         fn is_empty(&self) -> bool {
             self.count == 0
@@ -2205,15 +2211,15 @@ pub(super) mod db_page_cursor {
                 .into_iter()
                 .map(|page_cursor| page_cursor.borrow().clone())
                 .collect::<Vec<Self>>();
-    
+
             page_cursors.sort();
-    
+
             // no actual merging can occur for cursor based pagination because we
             // cannot know the actual density of records between cursors in advance
             page_cursors
         }
     }
-    
+
     cfg_if! {
         if #[cfg(all(not(feature = "mysql"), not(feature = "postgres"), not(feature = "sqlite")))] {
             pub trait QF {}
@@ -2269,13 +2275,13 @@ pub(super) mod db_page_offset {
     use super::*;
     use ::std::borrow::Borrow;
     use ::std::cmp::Ordering;
-    
+
     #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
     pub struct DbPageOffset {
         pub left: i64,
         pub right: i64,
     }
-    
+
     impl DbPageOffset {
         pub fn with_count(count: u32) -> Self {
             Self {
@@ -2284,7 +2290,7 @@ pub(super) mod db_page_offset {
             }
         }
     }
-    
+
     impl From<PageOffset> for DbPageOffset {
         fn from(value: PageOffset) -> Self {
             Self {
@@ -2293,7 +2299,7 @@ pub(super) mod db_page_offset {
             }
         }
     }
-    
+
     impl PartialOrd for DbPageOffset {
         fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
             if self.left != rhs.left {
@@ -2303,13 +2309,13 @@ pub(super) mod db_page_offset {
             }
         }
     }
-    
+
     impl Ord for DbPageOffset {
         fn cmp(&self, rhs: &Self) -> Ordering {
             self.partial_cmp(rhs).unwrap()
         }
     }
-    
+
     impl DbPageExt for DbPageOffset {
         fn is_empty(&self) -> bool {
             self.left == self.right
@@ -2319,9 +2325,9 @@ pub(super) mod db_page_offset {
                 .into_iter()
                 .map(|page_offset| *page_offset.borrow())
                 .collect::<Vec<Self>>();
-    
+
             page_offsets.sort();
-    
+
             let mut merged = Vec::new();
             if !page_offsets.is_empty() {
                 merged.push(page_offsets[0]);
@@ -2338,14 +2344,14 @@ pub(super) mod db_page_offset {
             merged
         }
     }
-    
+
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     pub(crate) struct Range {
         pub(crate) left_exclusive: i64,
         pub(crate) right_inclusive: i64,
         pub(crate) kind: RangeKind,
     }
-    
+
     impl From<&DbPageOffset> for Range {
         fn from(value: &DbPageOffset) -> Self {
             Self {
@@ -2355,14 +2361,14 @@ pub(super) mod db_page_offset {
             }
         }
     }
-    
+
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     pub(crate) enum RangeKind {
         Basic,
         LowerBound,
         UpperBound,
     }
-    
+
     impl PartialOrd for Range {
         fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
             use RangeKind::*;
@@ -2381,7 +2387,7 @@ pub(super) mod db_page_offset {
                     }
                 }
             };
-    
+
             Some(
                 if (bound.left_exclusive <= range.left_exclusive && bound.right_inclusive >= range.right_inclusive)
                     ^ bound_is_lower
@@ -2394,7 +2400,7 @@ pub(super) mod db_page_offset {
             )
         }
     }
-    
+
     impl Ord for Range {
         fn cmp(&self, rhs: &Self) -> Ordering {
             self.partial_cmp(rhs).unwrap()

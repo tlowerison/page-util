@@ -65,4 +65,3 @@ pub enum CursorDirection {
     Following,
     Preceding,
 }
-
