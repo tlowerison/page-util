@@ -1064,6 +1064,7 @@ pub use db_page::*;
 pub(super) mod db_page {
     use super::*;
     use ::chrono::NaiveDateTime;
+    use ::derivative::Derivative;
     use ::diesel::dsl::{self, And, IsNotNull, Or};
     use ::diesel::expression::{is_aggregate::No, AsExpression, ValidGrouping};
     use ::diesel::helper_types::{Gt, GtEq, Lt, LtEq};
@@ -1742,6 +1743,7 @@ pub use db_page_cursor::*;
 pub(super) mod db_page_cursor {
     use super::*;
     use ::chrono::NaiveDateTime;
+    use ::derivative::Derivative;
     use ::diesel::dsl::{self, And, IsNotNull, Or};
     use ::diesel::expression::{expression_types::NotSelectable, is_aggregate::No, AsExpression, ValidGrouping};
     use ::diesel::expression_methods::NullableExpressionMethods;

@@ -1,9 +1,4 @@
-#[cfg(feature = "async-graphql-4")]
-use async_graphql_4 as async_graphql;
-#[cfg(feature = "async-graphql-5")]
-use async_graphql_5 as async_graphql;
-#[cfg(feature = "async-graphql-6")]
-use async_graphql_6 as async_graphql;
+use crate::async_graphql;
 
 #[cfg(any(
     feature = "async-graphql-4",

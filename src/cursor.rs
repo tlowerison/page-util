@@ -1,12 +1,6 @@
+use crate::async_graphql;
 use ::chrono::NaiveDateTime;
 use ::std::cmp::Ordering;
-
-#[cfg(feature = "async-graphql-4")]
-use async_graphql_4 as async_graphql;
-#[cfg(feature = "async-graphql-5")]
-use async_graphql_5 as async_graphql;
-#[cfg(feature = "async-graphql-6")]
-use async_graphql_6 as async_graphql;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[cfg_attr(

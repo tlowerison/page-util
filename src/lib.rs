@@ -3,8 +3,6 @@
 #[macro_use]
 extern crate cfg_if;
 #[macro_use]
-extern crate derivative;
-#[macro_use]
 extern crate derive_more;
 #[macro_use]
 extern crate serde;
@@ -29,7 +27,16 @@ cfg_if! { if #[cfg(any(
 ))] {
     mod graphql;
     pub(crate) use crate::graphql::*;
+
+    #[cfg(feature = "async-graphql-4")]
+    pub(crate) use async_graphql_4 as async_graphql;
+    #[cfg(feature = "async-graphql-5")]
+    pub(crate) use async_graphql_5 as async_graphql;
+    #[cfg(feature = "async-graphql-6")]
+    pub(crate) use async_graphql_6 as async_graphql;
 } }
+
+
 
 #[derive(
     AsVariant, AsVariantMut, Clone, Copy, Debug, Deserialize, Eq, Hash, IsVariant, Ord, PartialEq, PartialOrd, Serialize,
