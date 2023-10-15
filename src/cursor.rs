@@ -1,4 +1,3 @@
-use crate::async_graphql;
 use ::chrono::NaiveDateTime;
 use ::std::cmp::Ordering;
 
@@ -9,7 +8,7 @@ use ::std::cmp::Ordering;
         feature = "async-graphql-5",
         feature = "async-graphql-6"
     ),
-    derive(async_graphql::InputObject)
+    derive(crate::async_graphql::InputObject)
 )]
 pub struct PageCursor {
     #[cfg_attr(
@@ -60,7 +59,7 @@ impl PartialOrd for PageCursor {
         feature = "async-graphql-5",
         feature = "async-graphql-6"
     ),
-    derive(async_graphql::Enum)
+    derive(crate::async_graphql::Enum)
 )]
 pub enum CursorDirection {
     Following,

@@ -1,4 +1,3 @@
-use crate::async_graphql;
 use ::std::cmp::Ordering;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -8,7 +7,7 @@ use ::std::cmp::Ordering;
         feature = "async-graphql-5",
         feature = "async-graphql-6"
     ),
-    derive(async_graphql::InputObject)
+    derive(crate::async_graphql::InputObject)
 )]
 pub struct PageOffset {
     #[cfg_attr(
