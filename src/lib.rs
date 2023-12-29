@@ -1,5 +1,3 @@
-#![feature(return_position_impl_trait_in_trait)]
-
 #[macro_use]
 extern crate cfg_if;
 #[macro_use]
